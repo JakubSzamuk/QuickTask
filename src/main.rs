@@ -21,7 +21,7 @@ struct InputState {
 }
 
 
-fn excecute_action(mut enigo: Enigo, go_to: InputState) {
+fn excecute_action(enigo: &mut Enigo, go_to: &InputState) {
     enigo.mouse_move_to(go_to.mouse_current.coords.0, go_to.mouse_current.coords.1);
     thread::sleep(Duration::from_millis(SAMPLING.into()))
 }
@@ -76,9 +76,9 @@ fn main() {
 
     let mut enigo = Enigo::new();
     thread::sleep(Duration::from_millis(2000));
-    for action in actions {
-        for i in 0..&action.duration {
-            excecute_action(mut enigo, action.input_state);
+    for action in &actions {
+        for i in 0..(action.duration + 1) {
+            excecute_action(&mut enigo, &action.input_state);
         }
     }
 }
