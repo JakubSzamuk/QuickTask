@@ -25,17 +25,18 @@ enum InputEvent {
 #[derive(Debug)]
 struct Step {
     pub event: EventStep,
-    pub at_time: &'static u128
+    pub at_time: u128
 }
 #[derive(Debug)]
 struct EventStep {
     pub event_type: InputEvent,
-    pub event_data: EventData,
+    pub event_data: EventData
 }
+#[derive(Debug)]
 enum EventData {
-    MouseMove(&'static MousePosition),
-    MouseData(&'static MouseButton),
-    KeyData(&'static Keycode),
+    MouseMove(MousePosition),
+    MouseData(MouseButton),
+    KeyData(Keycode),
 }
 
 
@@ -50,57 +51,72 @@ fn main() {
 
     let initial_function_time = Instant::now();
 
-    let _guard = device_state.on_mouse_move(move |pos| {
-        let current_step = Step {
-            event: EventStep {
-                event_type: InputEvent::MouseMove,
-                event_data: EventData::MouseMove(&pos)
-            },
-            at_time: &initial_function_time.elapsed().as_millis()
-        };
-        actions.lock().unwrap().push(current_step);
+    let _guard = device_state.on_mouse_move({
+        let actions = actions.clone();
+        move |pos: &MousePosition| {
+            let current_step = Step {
+                event: EventStep {
+                    event_type: InputEvent::MouseMove,
+                    event_data: EventData::MouseMove(*pos),
+                },
+                at_time: initial_function_time.elapsed().as_millis().clone(),
+            };
+            actions.lock().unwrap().push(current_step);
+        }
     });
-    let _guard = device_state.on_mouse_down(move |mouse_button| {
-        let current_step = Step {
-            event: EventStep {
-                event_type: InputEvent::MouseDown,
-                event_data: EventData::MouseData(&mouse_button)
-            },
-            at_time: &initial_function_time.elapsed().as_millis()
-        };
-        actions.lock().unwrap().push(current_step);
+    let _guard = device_state.on_mouse_down({
+        let actions = actions.clone();
+        move |mouse_button: &MouseButton| {
+            let current_step = Step {
+                event: EventStep {
+                    event_type: InputEvent::MouseDown,
+                    event_data: EventData::MouseData(*mouse_button),
+                },
+                at_time: initial_function_time.elapsed().as_millis().clone(),
+            };
+            actions.lock().unwrap().push(current_step);
+        }
     });
-    let _guard = device_state.on_mouse_up(move |mouse_button| {
-        let current_step = Step {
-            event: EventStep {
-                event_type: InputEvent::MouseUp,
-                event_data: EventData::MouseData(&mouse_button)
-            },
-            at_time: &initial_function_time.elapsed().as_millis()
-        };
-        actions.lock().unwrap().push(current_step);
+    let _guard = device_state.on_mouse_up({
+        let actions = actions.clone();
+        move |mouse_button: &MouseButton| {
+            let current_step = Step {
+                event: EventStep {
+                    event_type: InputEvent::MouseUp,
+                    event_data: EventData::MouseData(*mouse_button),
+                },
+                at_time: initial_function_time.elapsed().as_millis().clone(),
+            };
+            actions.lock().unwrap().push(current_step);
+        }
     });
 
 
-    let _guard = device_state.on_key_down(move |key_pressed| {
-        let current_step = Step {
-            event: EventStep {
-                event_type: InputEvent::KeyDown,
-                event_data: EventData::KeyData(&key_pressed)
-            },
-            at_time: &initial_function_time.elapsed().as_millis()
-        };
-        actions.lock().unwrap().push(current_step);
+    let _guard = device_state.on_key_down({
+        let actions = actions.clone();
+        move |key_pressed| {
+            let current_step = Step {
+                event: EventStep {
+                    event_type: InputEvent::KeyDown,
+                    event_data: EventData::KeyData(*key_pressed),
+                },
+                at_time: initial_function_time.elapsed().as_millis().clone(),
+            };
+            actions.lock().unwrap().push(current_step);
+        }
     });
-    let _guard = device_state.on_key_up(move |key_pressed| {
-        let current_step = Step {
-            event: EventStep {
-                event_type: InputEvent::KeyUp,
-                event_data: EventData::KeyData(&key_pressed)
-            },
-            at_time: &initial_function_time.elapsed().as_millis()
-        };
-        actions.lock().unwrap().push(current_step);
+    let _guard = device_state.on_key_up({
+        let actions = actions.clone();
+        move |key_pressed| {
+            let current_step = Step {
+                event: EventStep {
+                    event_type: InputEvent::KeyUp,
+                    event_data: EventData::KeyData(*key_pressed),
+                },
+                at_time: initial_function_time.elapsed().as_millis().clone(),
+            };
+            actions.lock().unwrap().push(current_step);
+        }
     });
 
 
@@ -109,6 +125,8 @@ fn main() {
             break;
         }
     }
+
+    println!("{:?}", actions.lock().unwrap());
 
 
 
