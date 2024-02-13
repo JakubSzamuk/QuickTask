@@ -2,28 +2,40 @@ use std::env::current_exe;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::thread::current;
-use std::time::Duration;
-use device_query::{DeviceEvents, DeviceQuery, DeviceState, keymap::Keycode, MousePosition, MouseState};
+use std::time::{Duration, Instant};
+use device_query::{DeviceEvents, DeviceQuery, DeviceState, keymap::Keycode, MousePosition, MouseButton, MouseState};
 use enigo::{Enigo, MouseControllable};
 
-const SAMPLING: u8 = 16;
+const SAMPLE_RATE: u8 = 16;
+const SPEED: u8 = 1;
 
-#[derive(PartialEq, Debug)]
+#[derive(Debug)]
+enum InputEvent {
+    MouseMove,
+    MouseDown,
+    MouseUp,
+
+    KeyDown,
+    KeyUp,
+}
+
+
+
+
+#[derive(Debug)]
 struct Step {
-    pub input_state: InputState,
-    pub duration: u8
+    pub event: EventStep,
+    pub at_time: &'static u128
 }
-
-#[derive(PartialEq, Debug)]
-struct InputState {
-    pub mouse_current: MouseState,
-    pub keys_current: Vec<Keycode>,
+#[derive(Debug)]
+struct EventStep {
+    pub event_type: InputEvent,
+    pub event_data: EventData,
 }
-
-
-fn excecute_action(enigo: &mut Enigo, go_to: &InputState) {
-    enigo.mouse_move_to(go_to.mouse_current.coords.0, go_to.mouse_current.coords.1);
-    thread::sleep(Duration::from_millis(SAMPLING.into()))
+enum EventData {
+    MouseMove(&'static MousePosition),
+    MouseData(&'static MouseButton),
+    KeyData(&'static Keycode),
 }
 
 
@@ -33,52 +45,78 @@ fn main() {
 
     println!("Press 'F12' to stop the loop.");
 
-    let mut actions: Vec<Step> = Vec::new();
+    let mut actions: Arc<Mutex<Vec<Step>>> = Arc::new(Mutex::new(Vec::new()));
+
+
+    let initial_function_time = Instant::now();
+
+    let _guard = device_state.on_mouse_move(move |pos| {
+        let current_step = Step {
+            event: EventStep {
+                event_type: InputEvent::MouseMove,
+                event_data: EventData::MouseMove(&pos)
+            },
+            at_time: &initial_function_time.elapsed().as_millis()
+        };
+        actions.lock().unwrap().push(current_step);
+    });
+    let _guard = device_state.on_mouse_down(move |mouse_button| {
+        let current_step = Step {
+            event: EventStep {
+                event_type: InputEvent::MouseDown,
+                event_data: EventData::MouseData(&mouse_button)
+            },
+            at_time: &initial_function_time.elapsed().as_millis()
+        };
+        actions.lock().unwrap().push(current_step);
+    });
+    let _guard = device_state.on_mouse_up(move |mouse_button| {
+        let current_step = Step {
+            event: EventStep {
+                event_type: InputEvent::MouseUp,
+                event_data: EventData::MouseData(&mouse_button)
+            },
+            at_time: &initial_function_time.elapsed().as_millis()
+        };
+        actions.lock().unwrap().push(current_step);
+    });
+
+
+    let _guard = device_state.on_key_down(move |key_pressed| {
+        let current_step = Step {
+            event: EventStep {
+                event_type: InputEvent::KeyDown,
+                event_data: EventData::KeyData(&key_pressed)
+            },
+            at_time: &initial_function_time.elapsed().as_millis()
+        };
+        actions.lock().unwrap().push(current_step);
+    });
+    let _guard = device_state.on_key_up(move |key_pressed| {
+        let current_step = Step {
+            event: EventStep {
+                event_type: InputEvent::KeyUp,
+                event_data: EventData::KeyData(&key_pressed)
+            },
+            at_time: &initial_function_time.elapsed().as_millis()
+        };
+        actions.lock().unwrap().push(current_step);
+    });
 
 
     loop {
-        let keys: Vec<Keycode> = device_state.get_keys();
-
-        if keys.contains(&Keycode::F12) {
+        if device_state.get_keys().contains(&Keycode::F12) {
             break;
         }
-
-        let current_state = Step {
-            input_state: InputState {
-                mouse_current: device_state.get_mouse(),
-                keys_current: keys,
-            },
-            duration: 0
-        };
-
-
-
-        let last_el = actions.len();
-
-
-        if last_el != 0 && &actions[last_el - 1].input_state == &current_state.input_state {
-            actions[last_el - 1].duration += 1
-        } else {
-            actions.push(current_state);
-        }
-
-        // Sleep for a short duration to avoid high CPU usage
-        std::thread::sleep(std::time::Duration::from_millis(SAMPLING.into()));
     }
 
 
 
-
-
-    println!("{:?}", actions);
-
-
-
-    let mut enigo = Enigo::new();
-    thread::sleep(Duration::from_millis(2000));
-    for action in &actions {
-        for i in 0..(action.duration + 1) {
-            excecute_action(&mut enigo, &action.input_state);
-        }
-    }
+    // let mut enigo = Enigo::new();
+    // // thread::sleep(Duration::from_millis(2000));
+    // for action in &actions {
+    //     for i in 0..(action.duration + 1) {
+    //         excecute_action(&mut enigo, &action.input_state);
+    //     }
+    // }
 }
