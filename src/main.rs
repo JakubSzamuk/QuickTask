@@ -1,12 +1,74 @@
-use std::env::current_exe;
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::thread::current;
 use std::time::{Duration, Instant};
-use device_query::{DeviceEvents, DeviceQuery, DeviceState, keymap::Keycode, MousePosition, MouseButton, MouseState};
-use enigo::{Enigo, KeyboardControllable, MouseControllable};
+use device_query::{DeviceEvents, DeviceQuery, DeviceState, keymap::Keycode, MousePosition, MouseButton};
+use enigo::{Enigo, Key, keycodes, KeyboardControllable, MouseControllable};
 
-const SAMPLE_RATE: u8 = 16;
+fn convert_key(key: Keycode) -> Key {
+    match key {
+        Keycode::A => Key::Layout('a'),
+        Keycode::B => Key::Layout('b'),
+        Keycode::C => Key::Layout('c'),
+        Keycode::D => Key::Layout('d'),
+        Keycode::E => Key::Layout('e'),
+        Keycode::F => Key::Layout('f'),
+        Keycode::G => Key::Layout('g'),
+        Keycode::H => Key::Layout('h'),
+        Keycode::I => Key::Layout('i'),
+        Keycode::J => Key::Layout('j'),
+        Keycode::K => Key::Layout('k'),
+        Keycode::L => Key::Layout('l'),
+        Keycode::M => Key::Layout('m'),
+        Keycode::N => Key::Layout('n'),
+        Keycode::O => Key::Layout('o'),
+        Keycode::P => Key::Layout('p'),
+        Keycode::Q => Key::Layout('q'),
+        Keycode::R => Key::Layout('r'),
+        Keycode::S => Key::Layout('s'),
+        Keycode::T => Key::Layout('t'),
+        Keycode::U => Key::Layout('u'),
+        Keycode::V => Key::Layout('v'),
+        Keycode::W => Key::Layout('w'),
+        Keycode::X => Key::Layout('x'),
+        Keycode::Y => Key::Layout('y'),
+        Keycode::Z => Key::Layout('z'),
+        Keycode::Space => Key::Layout(' '),
+        Keycode::Backspace => Key::Backspace,
+        Keycode::Tab => Key::Tab,
+        Keycode::Enter => Key::Return,
+        Keycode::Escape => Key::Escape,
+        Keycode::LControl => Key::Control,
+        Keycode::LShift => Key::Shift,
+        Keycode::LAlt => Key::Alt,
+
+        _ => unimplemented!("Keycode not implemented: {}", key),
+    }
+}
+
+fn convert_mouse_button(button: MouseButton) -> enigo::MouseButton {
+    match button {
+        1 => enigo::MouseButton::Left,
+        2 => enigo::MouseButton::Middle,
+        3 => enigo::MouseButton::Right,
+        _ => unimplemented!("Mouse button not implemented"),
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 const SPEED: u8 = 1;
 
 #[derive(Debug)]
@@ -18,9 +80,6 @@ enum InputEvent {
     KeyDown,
     KeyUp,
 }
-
-
-
 
 #[derive(Debug)]
 struct Step {
@@ -40,81 +99,36 @@ enum EventData {
 }
 
 
+
+
+
 fn handle_event(enigo: &mut Enigo, event: &EventStep) {
     match event.event_data {
         EventData::MouseMove(mouse_pos) => {
-            enigo.mouse_move_to(mouse_pos.0 as i32, mouse_pos.1 as i32);
+            enigo.mouse_move_to(mouse_pos.0, mouse_pos.1);
         }
         EventData::MouseData(mouse_button) => {
             match event.event_type {
                 InputEvent::MouseDown => {
-                    enigo.mouse_down(match mouse_button {
-                        MouseButton::Left => enigo::MouseButton::Left,
-                        MouseButton::Right => enigo::MouseButton::Right,
-                        MouseButton::Middle => enigo::MouseButton::Middle,
-                    });
+                    enigo.mouse_down(convert_mouse_button(mouse_button));
                 }
                 InputEvent::MouseUp => {
-                    enigo.mouse_up(match mouse_button {
-                        MouseButton::Left => enigo::MouseButton::Left,
-                        MouseButton::Right => enigo::MouseButton::Right,
-                        MouseButton::Middle => enigo::MouseButton::Middle,
-                    });
+                    enigo.mouse_up(convert_mouse_button(mouse_button));
                 }
                 _ => {}
             }
         }
-        // EventData::KeyData(keycode) => {
-        //     match event.event_type {
-        //         InputEvent::KeyDown => {
-        //             enigo.key_down(match keycode {
-        //                 Keycode::A => enigo::Key::A,
-        //                 Keycode::B => enigo::Key::B,
-        //                 Keycode::C => enigo::Key::C,
-        //                 Keycode::D => enigo::Key::D,
-        //                 Keycode::E => enigo::Key::E,
-        //                 Keycode::F => enigo::Key::F,
-        //                 Keycode::G => enigo::Key::G,
-        //                 Keycode::H => enigo::Key::H,
-        //                 Keycode::I => enigo::Key::I,
-        //                 Keycode::J => enigo::Key::J,
-        //                 Keycode::K => enigo::Key::K,
-        //                 Keycode::L => enigo::Key::L,
-        //                 Keycode::M => enigo::Key::M,
-        //                 Keycode::N => enigo::Key::N,
-        //                 Keycode::O => enigo::Key::O,
-        //                 Keycode::P => enigo::Key::P,
-        //                 Keycode::Q => enigo::Key::Q,
-        //                 Keycode::R => enigo::Key::R,
-        //                 Keycode::S => enigo::Key::S,
-        //                 Keycode::T => enigo::Key::T,
-        //                 Keycode::U => enigo::Key::U,
-        //                 Keycode::V => enigo::Key::V,
-        //                 Keycode::W => enigo::Key::W,
-        //                 Keycode::X => enigo::Key::X,
-        //                 Keycode::Y => enigo::Key::Y,
-        //                 Keycode::Z => enigo::Key::Z,
-        //                 Keycode::Key1 => enigo::Key::Num1,
-        //                 Keycode::Key2 => enigo::Key::Num2,
-        //                 Keycode::Key3 => enigo::Key::Num3,
-        //                 Keycode::Key4 => enigo::Key::Num4,
-        //                 Keycode::Key5 => enigo::Key::Num5,
-        //                 Keycode::Key6 => enigo::Key::Num6,
-        //                 Keycode::Key7 => enigo::Key::Num7,
-        //                 Keycode::Key8 => enigo::Key::Num8,
-        //                 Keycode::Key9 => enigo::Key::Num9,
-        //                 Keycode::Key0 => enigo::Key::Num0,
-        //                 Keycode::Enter => enigo::Key::Return,
-        //                 Keycode::Escape => enigo::Key::Escape,
-        //                 Keycode::Backspace => enigo::Key::Backspace,
-        //                 Keycode::Tab => enigo::Key::Tab,
-        //                 Keycode::Space => enigo::Key::Space,
-        //                 Keycode::Minus => enigo::Key::OEMMinus,
-        //                 Keycode::Equal => enigo::Key::OEMNECEqual
-        //             });
-        //         }
-        //     }
-        // }
+        EventData::KeyData(keycode) => {
+            match event.event_type {
+                InputEvent::KeyDown => {
+                    enigo.key_down(convert_key(keycode));
+                },
+                InputEvent::KeyUp => {
+                    enigo.key_up(convert_key(keycode));
+                },
+                _ => {}
+            }
+        }
         _ => {
             panic!("Unhandled event type");
         }
@@ -127,7 +141,15 @@ fn get_current_step(event_type: InputEvent, data: EventData, time: &Instant) -> 
             event_type,
             event_data: data,
         },
-        at_time: time.elapsed().as_millis().clone(),
+        at_time: time.elapsed().as_millis(),
+    }
+}
+
+fn wait_for_event(current_time: &Instant, required_time: u128) {
+    let mut time = current_time.elapsed().as_millis();
+    while time < required_time / SPEED as u128 {
+        time = current_time.elapsed().as_millis();
+        thread::sleep(Duration::from_millis(1));
     }
 }
 
@@ -136,7 +158,7 @@ fn main() {
 
     println!("Press 'F12' to stop the loop.");
 
-    let mut actions: Arc<Mutex<Vec<Step>>> = Arc::new(Mutex::new(Vec::new()));
+    let actions: Arc<Mutex<Vec<Step>>> = Arc::new(Mutex::new(Vec::new()));
 
 
     let initial_function_time = Instant::now();
@@ -144,7 +166,6 @@ fn main() {
     let _guard = device_state.on_mouse_move({
         let actions = actions.clone();
         move |pos: &MousePosition| {
-
             actions.lock().unwrap().push(get_current_step(InputEvent::MouseMove, EventData::MouseMove(*pos), &initial_function_time));
         }
     });
@@ -185,7 +206,10 @@ fn main() {
 
     let mut enigo = Enigo::new();
     thread::sleep(Duration::from_millis(2000));
+
+    let start_time = Instant::now();
     for action in actions.lock().unwrap().iter() {
+        wait_for_event(&start_time, action.at_time);
         handle_event(&mut enigo, &action.event);
     }
 }
