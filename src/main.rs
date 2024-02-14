@@ -2,7 +2,10 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 use device_query::{DeviceEvents, DeviceQuery, DeviceState, keymap::Keycode, MousePosition, MouseButton};
-use enigo::{Enigo, Key, keycodes, KeyboardControllable, MouseControllable};
+use enigo::{Enigo, Key, KeyboardControllable, MouseControllable};
+use iced::widget::{button, column, row, text};
+use iced::{Alignment, Element, Font, Sandbox, Settings};
+use iced::window::{Level, PlatformSpecific, Position};
 
 fn convert_key(key: Keycode) -> Key {
     match key {
@@ -58,20 +61,9 @@ fn convert_mouse_button(button: MouseButton) -> enigo::MouseButton {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
 const SPEED: u8 = 1;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum InputEvent {
     MouseMove,
     MouseDown,
@@ -81,17 +73,17 @@ enum InputEvent {
     KeyUp,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Step {
     pub event: EventStep,
     pub at_time: u128
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct EventStep {
     pub event_type: InputEvent,
     pub event_data: EventData
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum EventData {
     MouseMove(MousePosition),
     MouseData(MouseButton),
@@ -153,7 +145,8 @@ fn wait_for_event(current_time: &Instant, required_time: u128) {
     }
 }
 
-fn main() {
+
+fn record_macro() -> Vec<Step> {
     let device_state = DeviceState::new();
 
     println!("Press 'F12' to stop the loop.");
@@ -184,12 +177,18 @@ fn main() {
     let _guard = device_state.on_key_down({
         let actions = actions.clone();
         move |key_pressed| {
+            if *key_pressed == Keycode::F12 || *key_pressed == Keycode::F10 {
+                return;
+            }
             actions.lock().unwrap().push(get_current_step(InputEvent::KeyDown, EventData::KeyData(*key_pressed), &initial_function_time));
         }
     });
     let _guard = device_state.on_key_up({
         let actions = actions.clone();
         move |key_pressed| {
+            if *key_pressed == Keycode::F12 || *key_pressed == Keycode::F10 {
+                return;
+            }
             actions.lock().unwrap().push(get_current_step(InputEvent::KeyUp, EventData::KeyData(*key_pressed), &initial_function_time));
         }
     });
@@ -199,17 +198,104 @@ fn main() {
         if device_state.get_keys().contains(&Keycode::F12) {
             break;
         }
-    }
+    };
 
-    println!("{:?}", &actions.lock().unwrap());
+    let final_actions = actions.lock().unwrap().clone().to_vec();
+    final_actions
+}
 
 
+fn play_macro(actions: Vec<Step>) {
     let mut enigo = Enigo::new();
     thread::sleep(Duration::from_millis(2000));
 
     let start_time = Instant::now();
-    for action in actions.lock().unwrap().iter() {
+    for action in actions {
         wait_for_event(&start_time, action.at_time);
         handle_event(&mut enigo, &action.event);
+    }
+}
+
+
+fn main() {
+    let app_settings = Settings {
+        window: iced::window::Settings {
+            size: (100, 384),
+            resizable: false,
+            decorations: true,
+            min_size: None,
+            max_size: None,
+            transparent: false,
+            icon: None,
+            level: Level::Normal,
+            visible: true,
+            position: Position::Centered,
+            platform_specific: PlatformSpecific::default()
+        },
+        default_font: Font::MONOSPACE,
+        antialiasing: true,
+        default_text_size: 20.,
+        id: None,
+        flags: (),
+        exit_on_close_request: true,
+    };
+
+
+    let _ = QuickRun::run(app_settings);
+    // let actions = record_macro();
+    // println!("{:?}", &actions);
+    //
+    // play_macro(actions);
+}
+
+struct QuickRun {
+    current_macro: Vec<Step>,
+    is_recording: bool,
+    is_playing: bool,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum PressedEvent {
+    RecordPressed,
+    PlayPressed,
+    SavePressed
+}
+
+impl Sandbox for QuickRun {
+    type Message = PressedEvent;
+
+    fn new() -> Self {
+        Self { current_macro: Vec::new(), is_recording: false, is_playing: false }
+    }
+
+    fn title(&self) -> String {
+        String::from("QuickRun")
+    }
+
+    fn update(&mut self, pressed_event: PressedEvent) {
+        match pressed_event {
+            PressedEvent::RecordPressed => {
+                println!("Recording");
+            },
+            PressedEvent::PlayPressed => {
+                println!("Playing");
+            },
+            _ => {unimplemented!("Button is not implemented yet.")}
+        }
+    }
+
+    fn view(&self) -> Element<PressedEvent> {
+        column![
+            Row![
+                text("QuickRun").size(16),
+                button("X").on_press(PressedEvent::RecordPressed),
+            ],
+            button("Start Recording").on_press(PressedEvent::RecordPressed),
+            text("Hello world").size(50),
+            button("Stop Recording").on_press(PressedEvent::PlayPressed)
+        ]
+            .padding(20)
+            .align_items(Alignment::Center)
+            .into()
     }
 }

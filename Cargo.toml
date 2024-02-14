@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 device_query = "2.0.0"
 enigo = "0.1.3"
+iced = "0.10"
