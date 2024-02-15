@@ -1,5 +1,3 @@
-
-
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -57,8 +55,6 @@ fn convert_mouse_button(button: MouseButton) -> enigo::MouseButton {
 }
 
 
-
-
 #[derive(Debug, Clone)]
 enum InputEvent {
     MouseMove,
@@ -72,13 +68,15 @@ enum InputEvent {
 #[derive(Debug, Clone)]
 struct Step {
     pub event: EventStep,
-    pub at_time: u128
+    pub at_time: u128,
 }
+
 #[derive(Debug, Clone)]
 struct EventStep {
     pub event_type: InputEvent,
-    pub event_data: EventData
+    pub event_data: EventData,
 }
+
 #[derive(Debug, Clone)]
 enum EventData {
     MouseMove(MousePosition),
@@ -87,96 +85,105 @@ enum EventData {
 }
 
 
-
 pub struct MacroHandler {
-  stored_actions: Vec<Step>,
-  pub is_recording: bool,
-  pub is_playing: bool
+    stored_actions: Vec<Step>,
+    pub is_recording: bool,
+    pub is_playing: bool,
 }
 
 impl MacroHandler {
-  pub fn new() -> MacroHandler {
-    MacroHandler {
-      stored_actions: Vec::new(),
-      is_recording: false,
-      is_playing: true,
+    pub fn new() -> MacroHandler {
+        MacroHandler {
+            stored_actions: Vec::new(),
+            is_recording: false,
+            is_playing: true,
+        }
     }
-  }
 
 
-  pub fn start_recording(&mut self) -> bool {
-    self.is_recording = true;
-    let device_state = DeviceState::new();
+    pub fn start_recording(&mut self) -> bool {
+        (if (self.is_recording) { return false; });
+        self.is_recording = true;
+        let device_state = DeviceState::new();
 
 
-    let actions: Arc<Mutex<Vec<Step>>> = Arc::new(Mutex::new(Vec::new()));
+        let actions: Arc<Mutex<Vec<Step>>> = Arc::new(Mutex::new(Vec::new()));
+        let self_clone = Arc::new(Mutex::new(self));
+
+        thread::spawn(move || {
+            let initial_function_time = Instant::now();
+
+            let _guard = device_state.on_mouse_move({
+                let actions = actions.clone();
+                move |pos: &MousePosition| {
+                    actions.lock().unwrap().push(get_current_step(InputEvent::MouseMove, EventData::MouseMove(*pos), &initial_function_time));
+                }
+            });
+            let _guard = device_state.on_mouse_down({
+                let actions = actions.clone();
+                move |mouse_button: &MouseButton| {
+                    actions.lock().unwrap().push(get_current_step(InputEvent::MouseDown, EventData::MouseData(*mouse_button), &initial_function_time));
+                }
+            });
+            let _guard = device_state.on_mouse_up({
+                let actions = actions.clone();
+                move |mouse_button: &MouseButton| {
+                    actions.lock().unwrap().push(get_current_step(InputEvent::MouseUp, EventData::MouseData(*mouse_button), &initial_function_time));
+                }
+            });
+            let _guard = device_state.on_key_down({
+                let actions = actions.clone();
+                move |key_pressed| {
+                    if *key_pressed == Keycode::F12 || *key_pressed == Keycode::F10 {
+                        return;
+                    }
+                    actions.lock().unwrap().push(get_current_step(InputEvent::KeyDown, EventData::KeyData(*key_pressed), &initial_function_time));
+                }
+            });
+            let _guard = device_state.on_key_up({
+                let actions = actions.clone();
+                move |key_pressed| {
+                    if *key_pressed == Keycode::F12 || *key_pressed == Keycode::F10 {
+                        return;
+                    }
+                    actions.lock().unwrap().push(get_current_step(InputEvent::KeyUp, EventData::KeyData(*key_pressed), &initial_function_time));
+                }
+            });
 
 
-    let initial_function_time = Instant::now();
+            loop {
+                if device_state.get_keys().contains(&Keycode::F12) || !self_clone.lock().unwrap().is_recording {
+                    break;
+                }
+                thread::sleep(Duration::from_millis(10))
+            };
 
-    let _guard = device_state.on_mouse_move({
-        let actions = actions.clone();
-        move |pos: &MousePosition| {
-            actions.lock().unwrap().push(get_current_step(InputEvent::MouseMove, EventData::MouseMove(*pos), &initial_function_time));
+            let final_actions = actions.lock().unwrap().clone().to_vec();
+            self_clone.lock().unwrap().stored_actions = final_actions;
+            self_clone.lock().unwrap().is_recording = false;
+        });
+
+        return true;
+    }
+    pub fn stop_recording(&mut self) {
+        self.is_recording = false;
+    }
+
+
+    pub fn play_macro(&mut self, speed: &u8) {
+        println!("Trying to play");
+        (if (self.is_playing) { return; });
+        self.is_playing = true;
+        let mut enigo = Enigo::new();
+        thread::sleep(Duration::from_millis(2000));
+
+        let start_time = Instant::now();
+        for action in self.stored_actions.clone() {
+            wait_for_event(&start_time, action.at_time, &speed);
+            handle_event(&mut enigo, &action.event);
         }
-    });
-    let _guard = device_state.on_mouse_down({
-        let actions = actions.clone();
-        move |mouse_button: &MouseButton| {
-            actions.lock().unwrap().push(get_current_step(InputEvent::MouseDown, EventData::MouseData(*mouse_button), &initial_function_time));
-        }
-    });
-    let _guard = device_state.on_mouse_up({
-        let actions = actions.clone();
-        move |mouse_button: &MouseButton| {
-            actions.lock().unwrap().push(get_current_step(InputEvent::MouseUp, EventData::MouseData(*mouse_button), &initial_function_time));
-        }
-    });
-    let _guard = device_state.on_key_down({
-        let actions = actions.clone();
-        move |key_pressed| {
-            if *key_pressed == Keycode::F12 || *key_pressed == Keycode::F10 {
-                return;
-            }
-            actions.lock().unwrap().push(get_current_step(InputEvent::KeyDown, EventData::KeyData(*key_pressed), &initial_function_time));
-        }
-    });
-    let _guard = device_state.on_key_up({
-        let actions = actions.clone();
-        move |key_pressed| {
-            if *key_pressed == Keycode::F12 || *key_pressed == Keycode::F10 {
-                return;
-            }
-            actions.lock().unwrap().push(get_current_step(InputEvent::KeyUp, EventData::KeyData(*key_pressed), &initial_function_time));
-        }
-    });
-
-
-    loop {
-        if device_state.get_keys().contains(&Keycode::F12) || self.is_recording {
-            break;
-        }
-    };
-
-    let final_actions = actions.lock().unwrap().clone().to_vec();
-    self.stored_actions = final_actions;
-    return true
-  }
-  pub fn stop_recording(&mut self) {
-    self.is_recording = false;
-  }
-
-
-  fn play_macro(&self, speed: &u8) {
-      let mut enigo = Enigo::new();
-      thread::sleep(Duration::from_millis(2000));
-
-      let start_time = Instant::now();
-      for action in self.stored_actions.clone() {
-          wait_for_event(&start_time, action.at_time, &speed);
-          handle_event(&mut enigo, &action.event);
-      }
-  }
+        self.is_playing = false;
+    }
 }
 
 
@@ -200,10 +207,10 @@ fn handle_event(enigo: &mut Enigo, event: &EventStep) {
             match event.event_type {
                 InputEvent::KeyDown => {
                     enigo.key_down(convert_key(keycode));
-                },
+                }
                 InputEvent::KeyUp => {
                     enigo.key_up(convert_key(keycode));
-                },
+                }
                 _ => {}
             }
         }
