@@ -19,19 +19,16 @@ struct CurrentHandlerState {
 
 
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
-#[tauri::command]
+#[tauri::command(async)]
 fn start_recording(app_handler: tauri::State<AppState>) {
-    println!("Starting to record");
     let _ = app_handler.0.lock().unwrap().start_recording();
-    println!("status: {} {}", app_handler.0.lock().unwrap().is_recording, app_handler.0.lock().unwrap().is_playing)
 }
 #[tauri::command]
 fn stop_recording(app_handler: tauri::State<AppState>) {
-    println!("Stopping recording");
     let _ = app_handler.0.lock().unwrap().stop_recording();
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn play_macro(app_handler: tauri::State<AppState>, speed: u8) {
     println!("{} is the speed", speed);
     let _ = app_handler.0.lock().unwrap().play_macro(&speed);

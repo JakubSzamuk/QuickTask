@@ -6,10 +6,20 @@
   //   greetMsg = await invoke("greet", { name })
   // }
 
+
+
+
   type HandlerStatus = {
     is_recording: boolean,
     is_playing: boolean
   }
+
+
+  let speed_val = 1;
+  let repeat_val = 1;
+
+
+
 
   async function get_handler_status(): Promise<HandlerStatus> {
     return await invoke("get_handler_status")
@@ -21,7 +31,7 @@
     return await invoke("stop_recording");
   }
   async function play_macro() {
-    return await invoke("play_macro");
+    return await invoke("play_macro", { speed: speed_val });
   }
 
   const record_button_handler = () => {
@@ -45,8 +55,6 @@
 
   import "./app.css";
 
-  let speed_val = 1;
-  let repeat_val = 1;
 </script>
 
 <main class="flex flex-col items-center gap-2">
