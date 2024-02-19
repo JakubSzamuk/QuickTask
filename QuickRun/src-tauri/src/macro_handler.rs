@@ -110,42 +110,34 @@ impl MacroHandler {
         let actions: Arc<Mutex<Vec<Step>>> = Arc::new(Mutex::new(Vec::new()));
         let initial_function_time = Instant::now();
 
-        let _guard = device_state.on_mouse_move({
-            let actions = actions.clone();
-            move |pos: &MousePosition| {
-                actions.lock().unwrap().push(get_current_step(InputEvent::MouseMove, EventData::MouseMove(*pos), &initial_function_time));
-            }
-        });
-        let _guard = device_state.on_mouse_down({
-            let actions = actions.clone();
-            move |mouse_button: &MouseButton| {
-                actions.lock().unwrap().push(get_current_step(InputEvent::MouseDown, EventData::MouseData(*mouse_button), &initial_function_time));
-            }
-        });
-        let _guard = device_state.on_mouse_up({
-            let actions = actions.clone();
-            move |mouse_button: &MouseButton| {
-                actions.lock().unwrap().push(get_current_step(InputEvent::MouseUp, EventData::MouseData(*mouse_button), &initial_function_time));
-            }
-        });
-        let _guard = device_state.on_key_down({
-            let actions = actions.clone();
-            move |key_pressed| {
-                if *key_pressed == Keycode::F12 || *key_pressed == Keycode::F10 {
-                    return;
+        macro_rules! key_events {
+            ($event_type: ident, $data_type: ident) => {
+                {
+                    let actions = actions.clone();
+                    move |event| {
+                        if *event != Keycode::F12 && *event != Keycode::F10 {
+                            actions.lock().unwrap().push(get_current_step(InputEvent::$event_type, EventData::$data_type(*event), &initial_function_time));
+                        }
+                    }
                 }
-                actions.lock().unwrap().push(get_current_step(InputEvent::KeyDown, EventData::KeyData(*key_pressed), &initial_function_time));
-            }
-        });
-        let _guard = device_state.on_key_up({
-            let actions = actions.clone();
-            move |key_pressed| {
-                if *key_pressed == Keycode::F12 || *key_pressed == Keycode::F10 {
-                    return;
+            };
+            ($event_type: ident, $input_type: ty, $data_type: ident) => {
+                {
+                    let actions = actions.clone();
+                    move |event: $input_type| {
+                        actions.lock().unwrap().push(get_current_step(InputEvent::$event_type, EventData::$data_type(*event), &initial_function_time));
+                    }
                 }
-                actions.lock().unwrap().push(get_current_step(InputEvent::KeyUp, EventData::KeyData(*key_pressed), &initial_function_time));
-            }
-        });
+            };
+        }
+
+
+        let _guard = device_state.on_mouse_move(key_events!(MouseMove, &MousePosition, MouseMove));
+        let _guard = device_state.on_mouse_down(key_events!(MouseDown, &MouseButton, MouseData));
+        let _guard = device_state.on_mouse_up(key_events!(MouseUp, &MouseButton, MouseData));
+
+        let _guard = device_state.on_key_down(key_events!(KeyDown, KeyData));
+        let _guard = device_state.on_key_up(key_events!(KeyUp, KeyData));
 
 
         loop {
