@@ -3,9 +3,6 @@ use std::thread;
 use std::time::{Duration, Instant};
 use device_query::{DeviceEvents, DeviceQuery, DeviceState, keymap::Keycode, MousePosition, MouseButton};
 use enigo::{Enigo, Key, KeyboardControllable, MouseControllable};
-use iced::widget::{button, column, row, text};
-use iced::{Alignment, Element, Font, Sandbox, Settings};
-use iced::window::{Level, PlatformSpecific, Position};
 
 fn convert_key(key: Keycode) -> Key {
     match key {
@@ -218,84 +215,8 @@ fn play_macro(actions: Vec<Step>) {
 
 
 fn main() {
-    let app_settings = Settings {
-        window: iced::window::Settings {
-            size: (100, 384),
-            resizable: false,
-            decorations: true,
-            min_size: None,
-            max_size: None,
-            transparent: false,
-            icon: None,
-            level: Level::Normal,
-            visible: true,
-            position: Position::Centered,
-            platform_specific: PlatformSpecific::default()
-        },
-        default_font: Font::MONOSPACE,
-        antialiasing: true,
-        default_text_size: 20.,
-        id: None,
-        flags: (),
-        exit_on_close_request: true,
-    };
-
-
-    let _ = QuickRun::run(app_settings);
-    // let actions = record_macro();
-    // println!("{:?}", &actions);
-    //
-    // play_macro(actions);
-}
-
-struct QuickRun {
-    current_macro: Vec<Step>,
-    is_recording: bool,
-    is_playing: bool,
-}
-
-#[derive(Debug, Clone, Copy)]
-enum PressedEvent {
-    RecordPressed,
-    PlayPressed,
-    SavePressed
-}
-
-impl Sandbox for QuickRun {
-    type Message = PressedEvent;
-
-    fn new() -> Self {
-        Self { current_macro: Vec::new(), is_recording: false, is_playing: false }
-    }
-
-    fn title(&self) -> String {
-        String::from("QuickRun")
-    }
-
-    fn update(&mut self, pressed_event: PressedEvent) {
-        match pressed_event {
-            PressedEvent::RecordPressed => {
-                println!("Recording");
-            },
-            PressedEvent::PlayPressed => {
-                println!("Playing");
-            },
-            _ => {unimplemented!("Button is not implemented yet.")}
-        }
-    }
-
-    fn view(&self) -> Element<PressedEvent> {
-        column![
-            Row![
-                text("QuickRun").size(16),
-                button("X").on_press(PressedEvent::RecordPressed),
-            ],
-            button("Start Recording").on_press(PressedEvent::RecordPressed),
-            text("Hello world").size(50),
-            button("Stop Recording").on_press(PressedEvent::PlayPressed)
-        ]
-            .padding(20)
-            .align_items(Alignment::Center)
-            .into()
-    }
+    let actions = record_macro();
+    println!("{:?}", &actions);
+    
+    play_macro(actions);
 }
