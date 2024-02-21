@@ -139,18 +139,20 @@ impl MacroHandler {
         let _guard = device_state.on_key_down(key_events!(KeyDown, KeyData));
         let _guard = device_state.on_key_up(key_events!(KeyUp, KeyData));
 
-
+        println!("up to loop");
         loop {
             if device_state.get_keys().contains(&Keycode::F12) || !self.is_recording {
+                println!("Testing");
                 break;
             }
             thread::sleep(Duration::from_millis(10))
         };
 
         let final_actions = actions.lock().unwrap().clone().to_vec();
+        println!("{:?}", &final_actions);
         self.stored_actions = final_actions;
         self.is_recording = false;
-
+        println!("Done?");
         true
     }
     pub fn stop_recording(&mut self) {
@@ -163,10 +165,10 @@ impl MacroHandler {
         (if (self.is_playing) { return; });
         self.is_playing = true;
         let mut enigo = Enigo::new();
-        thread::sleep(Duration::from_millis(2000));
 
         let start_time = Instant::now();
         for action in self.stored_actions.clone() {
+            println!("About to do an event: {}", &speed);
             wait_for_event(&start_time, action.at_time, &speed);
             handle_event(&mut enigo, &action.event);
         }
@@ -223,6 +225,6 @@ fn wait_for_event(current_time: &Instant, required_time: u128, speed: &u8) {
     let mut time = current_time.elapsed().as_millis();
     while time < required_time / *speed as u128 {
         time = current_time.elapsed().as_millis();
-        thread::sleep(Duration::from_millis(1));
+        thread::sleep(Duration::from_millis(1)); // testing one two three four five
     }
 }
